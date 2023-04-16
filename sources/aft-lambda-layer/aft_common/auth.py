@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
+import logging
 from functools import cached_property
 from typing import TYPE_CHECKING, Optional
 
@@ -9,7 +10,6 @@ from aft_common.aft_utils import (
     SSM_PARAM_ACCOUNT_CT_MANAGEMENT_ACCOUNT_ID,
     SSM_PARAM_ACCOUNT_LOG_ARCHIVE_ACCOUNT_ID,
     get_aws_partition,
-    get_logger,
     get_ssm_parameter_value,
 )
 from boto3 import Session
@@ -23,7 +23,7 @@ else:
     STSClient = object
     AssumeRoleRequestRequestTypeDef = object
 
-logger = get_logger()
+logger = logging.getLogger("aft")
 
 
 class AuthClient:
@@ -100,6 +100,10 @@ class AuthClient:
             aws_session_token=credentials["SessionToken"],
             region_name=region if region is not None else session.region_name,
         )
+
+    @staticmethod
+    def get_account_id_from_session(session: Session) -> str:
+        return session.client("sts").get_caller_identity()["Account"]
 
     def _get_hub_session(self, session_duration: int = 900) -> Session:
         """
@@ -208,7 +212,3 @@ class AuthClient:
             session_policy=session_policy,
             session_duration=session_duration,
         )
-
-    @staticmethod
-    def get_account_id_from_session(session: Session) -> str:
-        return session.client("sts").get_caller_identity()["Account"]

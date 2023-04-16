@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 import inspect
+import logging
 from typing import TYPE_CHECKING, Any, Dict
 
 import boto3
 from aft_common import aft_utils as utils
-from aft_common import notifications
+from aft_common import ddb, notifications
+from aft_common.logger import configure_aft_logger
 
 if TYPE_CHECKING:
     from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -15,7 +17,8 @@ else:
     PutItemOutputTableTypeDef = object
     LambdaContext = object
 
-logger = utils.get_logger()
+configure_aft_logger()
+logger = logging.getLogger("aft")
 
 
 def lambda_handler(
@@ -23,7 +26,7 @@ def lambda_handler(
 ) -> PutItemOutputTableTypeDef:
     session = boto3.session.Session()
     try:
-        response = utils.put_ddb_item(
+        response = ddb.put_ddb_item(
             session,
             utils.get_ssm_parameter_value(session, utils.SSM_PARAM_AFT_EVENTS_TABLE),
             event,

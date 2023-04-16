@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 import json
-import os
+import logging
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 
 import aft_common.aft_utils as utils
-import jsonschema
-from aft_common.aft_types import AftAccountInfo
+from aft_common import ddb
 from aft_common.auth import AuthClient
+from aft_common.organizations import OrganizationsAgent
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
@@ -26,7 +26,7 @@ else:
     TagTypeDef = object
 
 
-logger = utils.get_logger()
+logger = logging.getLogger("aft")
 
 
 AFT_EXEC_ROLE = "AWSAFTExecution"
@@ -37,6 +37,7 @@ SSM_PARAMETER_PATH = "/aft/account-request/custom-fields/"
 class ProvisionRoles:
 
     SERVICE_ROLE_NAME = "AWSAFTService"
+    EXECUTION_ROLE_NAME = "AWSAFTExecution"
 
     def __init__(self, auth: AuthClient, account_id: str) -> None:
         self.auth = auth
@@ -57,7 +58,11 @@ class ProvisionRoles:
                     {
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": f"arn:{self.partition}:iam::{self.auth.aft_management_account_id}:assumed-role/AWSAFTAdmin/AWSAFT-Session"
+                            "AWS": [
+                                # TODO: Do we still need role/AWSAFTAdmin
+                                f"arn:{self.partition}:iam::{self.auth.aft_management_account_id}:role/AWSAFTAdmin",
+                                f"arn:{self.partition}:sts::{self.auth.aft_management_account_id}:assumed-role/AWSAFTAdmin/AWSAFT-Session",
+                            ]
                         },
                         "Action": "sts:AssumeRole",
                     }
@@ -169,12 +174,16 @@ class ProvisionRoles:
     def role_policy_is_attached(
         role_name: str, policy_arn: str, target_account_session: Session
     ) -> bool:
+        logger.info("Determining if {policy_arn} is attached to {role_name}")
         resource: IAMServiceResource = target_account_session.resource("iam")
         role = resource.Role(role_name)
         policy_iterator = role.attached_policies.all()
         policy_arns = [policy.arn for policy in policy_iterator]
-        logger.info(policy_arns)
-        return policy_arn in policy_arns
+        attached = policy_arn in policy_arns
+        logger.info(
+            f"{policy_arn} is {'attached' if attached else 'detached'} to {role_name}"
+        )
+        return attached
 
     def _ensure_role_can_be_assumed(
         self, role_name: str, timeout_in_mins: int = 1, delay: int = 5
@@ -194,21 +203,18 @@ class ProvisionRoles:
                 account_id=self.target_account_id, role_name=role_name
             )
             return True
-        except ClientError as error:
-            if error.response["Error"]["Code"] == "AccessDenied":
-                return False
-            raise error
+        except ClientError:
+            return False
 
     def deploy_aws_aft_roles(self) -> None:
         trust_policy = self.generate_aft_trust_policy()
 
-        aft_execution_role_name = utils.get_ssm_parameter_value(
-            session=self.auth.get_aft_management_session(),
-            param=AuthClient.SSM_PARAM_AFT_EXEC_ROLE_NAME,
-        )
-        aft_execution_role_name = aft_execution_role_name.split("/")[-1]
+        aft_role_names = [
+            ProvisionRoles.SERVICE_ROLE_NAME,
+            ProvisionRoles.EXECUTION_ROLE_NAME,
+        ]
 
-        aft_role_names = [ProvisionRoles.SERVICE_ROLE_NAME, aft_execution_role_name]
+        logger.info(f"Deploying roles {', '.join(aft_role_names)}")
         for role_name in aft_role_names:
             self._deploy_role_in_target_account(
                 role_name=role_name,
@@ -222,48 +228,10 @@ class ProvisionRoles:
             logger.info(f"Can assume {role_name} role")
 
 
-def get_account_info(
-    payload: Dict[str, Any], ct_management_session: Session
-) -> AftAccountInfo:
-    logger.info("Function Start - get_account_info")
-
-    account_id = None
-
-    # Handle a Control Tower Event
-    if "account" in payload["control_tower_event"]:
-        if (
-            payload["control_tower_event"]["detail"]["eventName"]
-            == "CreateManagedAccount"
-        ):
-            account_id = payload["control_tower_event"]["detail"][
-                "serviceEventDetails"
-            ]["createManagedAccountStatus"]["account"]["accountId"]
-        elif (
-            payload["control_tower_event"]["detail"]["eventName"]
-            == "UpdateManagedAccount"
-        ):
-            account_id = payload["control_tower_event"]["detail"][
-                "serviceEventDetails"
-            ]["updateManagedAccountStatus"]["account"]["accountId"]
-        if account_id:
-            logger.info(f"Account Id [{account_id}] found in control_tower_event")
-            return utils.get_account_info(ct_management_session, account_id)
-
-    elif "id" in payload["account_request"]:
-        email = payload["account_request"]["id"]
-        logger.info("Account Email: " + email)
-        account_id = utils.get_account_id_from_email(ct_management_session, email)
-        return utils.get_account_info(ct_management_session, account_id)
-
-    raise Exception("Account was not found")
-
-
 # From persist-metadata Lambda
 def persist_metadata(
     payload: Dict[str, Any], account_info: Dict[str, str], session: Session
 ) -> PutItemOutputTableTypeDef:
-
-    logger.info("Function Start - persist_metadata")
 
     account_tags = payload["account_request"]["account_tags"]
     account_customizations_name = payload["account_request"][
@@ -289,7 +257,7 @@ def persist_metadata(
     logger.info("Writing item to " + metadata_table_name)
     logger.info(item)
 
-    response = utils.put_ddb_item(session, metadata_table_name, item)
+    response = ddb.put_ddb_item(session, metadata_table_name, item)
 
     logger.info(response)
     return response
@@ -333,27 +301,10 @@ def tag_account(
     ct_management_session: Session,
     rollback: bool,
 ) -> None:
-    logger.info("Start Function - tag_account")
     logger.info(payload)
 
     tags = payload["account_request"]["account_tags"]
     tag_list: List[TagTypeDef] = [{"Key": k, "Value": v} for k, v in tags.items()]
-    utils.tag_org_resource(
-        ct_management_session, account_info["id"], tag_list, rollback
-    )
 
-
-def validate_request(payload: Dict[str, Any]) -> bool:
-    logger.info("Function Start - validate_request")
-    schema_path = os.path.join(
-        os.path.dirname(__file__), "schemas/valid_account_request_schema.json"
-    )
-    with open(schema_path) as schema_file:
-        schema_object = json.load(schema_file)
-    logger.info("Schema Loaded:" + json.dumps(schema_object))
-    validated = jsonschema.validate(payload, schema_object)
-    if validated is None:
-        logger.info("Request Validated")
-        return True
-    else:
-        raise Exception("Failure validating request.\n{validated}")
+    orgs_agent = OrganizationsAgent(ct_management_session)
+    orgs_agent.tag_org_resource(account_info["id"], tag_list, rollback)

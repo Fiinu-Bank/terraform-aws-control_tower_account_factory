@@ -23,6 +23,14 @@ module "aft_account_provisioning_framework" {
   cloudwatch_log_group_retention                   = var.cloudwatch_log_group_retention
   provisioning_framework_archive_path              = module.packaging.provisioning_framework_archive_path
   provisioning_framework_archive_hash              = module.packaging.provisioning_framework_archive_hash
+  create_role_lambda_function_name                 = local.create_role_lambda_function_name
+  tag_account_lambda_function_name                 = local.tag_account_lambda_function_name
+  persist_metadata_lambda_function_name            = local.persist_metadata_lambda_function_name
+  account_metadata_ssm_lambda_function_name        = local.account_metadata_ssm_lambda_function_name
+  delete_default_vpc_lambda_function_name          = local.delete_default_vpc_lambda_function_name
+  enroll_support_lambda_function_name              = local.enroll_support_lambda_function_name
+  enable_cloudtrail_lambda_function_name           = local.enable_cloudtrail_lambda_function_name
+
 }
 
 module "aft_account_request_framework" {
@@ -41,6 +49,7 @@ module "aft_account_request_framework" {
   aft_vpc_public_subnet_01_cidr               = var.aft_vpc_public_subnet_01_cidr
   aft_vpc_public_subnet_02_cidr               = var.aft_vpc_public_subnet_02_cidr
   aft_vpc_endpoints                           = var.aft_vpc_endpoints
+  concurrent_account_factory_actions          = var.concurrent_account_factory_actions
   request_framework_archive_path              = module.packaging.request_framework_archive_path
   request_framework_archive_hash              = module.packaging.request_framework_archive_hash
 }
@@ -145,6 +154,9 @@ module "aft_feature_options" {
   cloudwatch_log_group_retention            = var.cloudwatch_log_group_retention
   feature_options_archive_path              = module.packaging.feature_options_archive_path
   feature_options_archive_hash              = module.packaging.feature_options_archive_hash
+  delete_default_vpc_lambda_function_name   = local.delete_default_vpc_lambda_function_name
+  enroll_support_lambda_function_name       = local.enroll_support_lambda_function_name
+  enable_cloudtrail_lambda_function_name    = local.enable_cloudtrail_lambda_function_name
 }
 
 module "aft_iam_roles" {
@@ -190,6 +202,7 @@ module "aft_ssm_parameters" {
   aft_controltower_events_table_name                          = module.aft_account_request_framework.controltower_events_table_name
   account_factory_product_name                                = module.aft_account_request_framework.account_factory_product_name
   aft_invoke_aft_account_provisioning_framework_function_name = module.aft_account_request_framework.invoke_aft_account_provisioning_framework_lambda_function_name
+  aft_cleanup_resources_function_name                         = module.aft_account_request_framework.aft_cleanup_resources_function_name
   aft_account_provisioning_framework_sfn_name                 = module.aft_account_request_framework.aft_account_provisioning_framework_sfn_name
   aft_sns_topic_arn                                           = module.aft_account_request_framework.sns_topic_arn
   aft_failure_sns_topic_arn                                   = module.aft_account_request_framework.failure_sns_topic_arn
@@ -198,8 +211,6 @@ module "aft_ssm_parameters" {
   request_processor_function_arn                              = module.aft_account_request_framework.request_processor_function_arn
   control_tower_event_logger_function_arn                     = module.aft_account_request_framework.control_tower_event_logger_function_arn
   invoke_aft_account_provisioning_framework_function_arn      = module.aft_account_request_framework.invoke_aft_account_provisioning_framework_function_arn
-  validate_request_function_arn                               = module.aft_account_provisioning_framework.validate_request_function_arn
-  get_account_info_function_arn                               = module.aft_account_provisioning_framework.get_account_info_function_arn
   create_role_function_arn                                    = module.aft_account_provisioning_framework.create_role_function_arn
   tag_account_function_arn                                    = module.aft_account_provisioning_framework.tag_account_function_arn
   persist_metadata_function_arn                               = module.aft_account_provisioning_framework.persist_metadata_function_arn
@@ -231,7 +242,7 @@ module "aft_ssm_parameters" {
   aft_config_backend_secondary_region                         = var.tf_backend_secondary_region
   aft_framework_repo_url                                      = var.aft_framework_repo_url
   aft_framework_repo_git_ref                                  = local.aft_framework_repo_git_ref
-  terraform_token                                             = var.terraform_token
+  terraform_token                                             = var.terraform_token # Null default value #tfsec:ignore:general-secrets-no-plaintext-exposure
   terraform_version                                           = var.terraform_version
   terraform_org_name                                          = var.terraform_org_name
   aft_feature_cloudtrail_data_events                          = var.aft_feature_cloudtrail_data_events

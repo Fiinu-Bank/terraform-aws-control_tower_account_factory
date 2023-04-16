@@ -19,7 +19,7 @@ resource "aws_codebuild_project" "aft_global_customizations_terraform" {
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
     privileged_mode             = var.privileged_mode # Allow docker to run within the codebuild container
@@ -60,11 +60,13 @@ resource "aws_codebuild_project" "aft_global_customizations_terraform" {
 }
 
 # Maintain this log group for log retention reasons. This is no longer used by AFT
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "aft_global_customizations_api_helpers" {
   name              = "/aws/codebuild/aft-global-customizations-api-helpers"
   retention_in_days = var.cloudwatch_log_group_retention
 }
 
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "aft_global_customizations_terraform" {
   name              = "/aws/codebuild/aft-global-customizations-terraform"
   retention_in_days = var.cloudwatch_log_group_retention
@@ -88,7 +90,7 @@ resource "aws_codebuild_project" "aft_account_customizations_terraform" {
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
     environment_variable {
@@ -127,11 +129,13 @@ resource "aws_codebuild_project" "aft_account_customizations_terraform" {
 }
 
 # Maintain this log group for log retention reasons. This is no longer used by AFT
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "aft_account_customizations_api_helpers" {
   name              = "/aws/codebuild/aft-account-customizations-api-helpers"
   retention_in_days = var.cloudwatch_log_group_retention
 }
 
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "aft_account_customizations_terraform" {
   name              = "/aws/codebuild/aft-account-customizations-terraform"
   retention_in_days = var.cloudwatch_log_group_retention
@@ -155,7 +159,7 @@ resource "aws_codebuild_project" "aft_create_pipeline" {
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
 
@@ -242,6 +246,7 @@ resource "aws_codebuild_project" "aft_create_pipeline" {
 
 }
 
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "aft_create_pipeline" {
   name              = "/aws/codebuild/aft-create-pipeline"
   retention_in_days = var.cloudwatch_log_group_retention

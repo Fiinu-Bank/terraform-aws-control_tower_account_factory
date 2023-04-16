@@ -23,7 +23,7 @@ resource "aws_codebuild_project" "account_request" {
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
     environment_variable {
@@ -75,7 +75,7 @@ resource "aws_codebuild_project" "account_provisioning_customizations_pipeline" 
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
 
@@ -114,10 +114,13 @@ resource "aws_codebuild_project" "account_provisioning_customizations_pipeline" 
 
 }
 
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "account_request" {
   name              = "/aws/codebuild/ct-aft-account-request"
   retention_in_days = var.log_group_retention
 }
+
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "account_provisioning_customizations" {
   name              = "/aws/codebuild/ct-aft-account-provisioning-customizations"
   retention_in_days = var.log_group_retention
