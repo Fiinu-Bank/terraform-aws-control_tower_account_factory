@@ -386,3 +386,12 @@ variable "aft_metrics_reporting" {
     error_message = "Valid values for var: aft_metrics_reporting are (true, false)."
   }
 }
+
+#########################################
+# Fiinu Customization Variables
+#########################################
+variable "privileged_mode" {
+  type        = bool
+  description = "Enables privileged_mode in the codebuild project"
+  default     = false
+}
