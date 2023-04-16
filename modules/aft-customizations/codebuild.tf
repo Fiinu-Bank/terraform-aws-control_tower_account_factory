@@ -22,7 +22,6 @@ resource "aws_codebuild_project" "aft_global_customizations_terraform" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
-    privileged_mode             = var.privileged_mode # Allow docker to run within the codebuild container
 
     environment_variable {
       name  = "AWS_PARTITION"
@@ -84,6 +83,7 @@ resource "aws_codebuild_project" "aft_account_customizations_terraform" {
   service_role   = aws_iam_role.aft_codebuild_customizations_role.arn
   encryption_key = var.aft_kms_key_arn
 
+
   artifacts {
     type = "CODEPIPELINE"
   }
@@ -93,6 +93,7 @@ resource "aws_codebuild_project" "aft_account_customizations_terraform" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = var.privileged_mode # Allow docker to run within the codebuild container
     environment_variable {
       name  = "AWS_PARTITION"
       value = data.aws_partition.current.partition
