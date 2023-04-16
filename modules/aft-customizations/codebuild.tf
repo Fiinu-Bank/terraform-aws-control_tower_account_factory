@@ -22,6 +22,7 @@ resource "aws_codebuild_project" "aft_global_customizations_terraform" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = var.privileged_mode # Allow docker to run within the codebuild container
 
     environment_variable {
       name  = "AWS_PARTITION"

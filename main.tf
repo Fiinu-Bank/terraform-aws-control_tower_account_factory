@@ -119,6 +119,8 @@ module "aft_customizations" {
   customizations_archive_path                       = module.packaging.customizations_archive_path
   customizations_archive_hash                       = module.packaging.customizations_archive_hash
   global_codebuild_timeout                          = var.global_codebuild_timeout
+  # Enable or disable privileged_mode
+  privileged_mode                                   = var.privileged_mode   
 }
 
 module "aft_feature_options" {

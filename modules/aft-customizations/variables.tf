@@ -108,3 +108,8 @@ variable "customizations_archive_hash" {
 variable "global_codebuild_timeout" {
   type = number
 }
+
+variable "privileged_mode" {
+  type = bool
+  default = false
+}
